@@ -19,6 +19,7 @@ QuizForge is a desktop application for creating, managing, and taking academic q
 ## Features
 
 ### Question Types Supported
+
 1. Single Choice (MCQ with one correct answer)
 2. Multiple Choice (MCQ with multiple correct answers)
 3. Fill in the Blank (text/numeric input)
@@ -30,6 +31,7 @@ QuizForge is a desktop application for creating, managing, and taking academic q
 9. Calculation (multi-step problems)
 
 ### Core Functionality
+
 - Subject and topic management
 - Centralized question bank
 - Quiz generation from question bank
@@ -41,6 +43,7 @@ QuizForge is a desktop application for creating, managing, and taking academic q
 ## Development Setup
 
 ### Prerequisites
+
 - Node.js 18+
 - Rust 1.70+
 - npm or yarn
@@ -90,6 +93,7 @@ quizforge/
 QuizForge uses SQLite as an embedded database. The schema is automatically initialized on first run.
 
 ### Tables
+
 - `subjects` - Academic subjects
 - `topics` - Topics within subjects
 - `questions` - Question bank
@@ -104,40 +108,46 @@ QuizForge uses SQLite as an embedded database. The schema is automatically initi
 ## Development Roadmap
 
 ### Phase 1: Foundation ✅
+
 - [x] Project scaffolding
 - [x] Database setup
 - [x] Basic UI structure
 - [x] Type definitions
 
 ### Phase 2: Subject & Topic CRUD
-- [ ] Subject CRUD operations
-- [ ] Topic CRUD operations
-- [ ] Navigation between subjects/topics
+
+- [x] Subject CRUD operations
+- [x] Topic CRUD operations
+- [x] Navigation between subjects/topics
 
 ### Phase 3: Question Bank - Basic Types
-- [ ] Question list with filters
-- [ ] Single choice editor/renderer
-- [ ] Multiple choice editor/renderer
-- [ ] Fill blank editor/renderer
+
+- [x] Question list with filters
+- [x] Single choice editor/renderer
+- [x] Multiple choice editor/renderer
+- [x] Fill blank editor/renderer
 
 ### Phase 4: Question Bank - Advanced Types
-- [ ] Matching editor/renderer
-- [ ] Ordering editor/renderer
-- [ ] Image identification editor/renderer
-- [ ] Numeric/Calculation editor/renderer
+
+- [x] Matching editor/renderer
+- [x] Ordering editor/renderer
+- [x] Image identification editor/renderer
+- [x] Numeric/Calculation editor/renderer
 
 ### Phase 5: Quiz System
-- [ ] Quiz CRUD operations
-- [ ] Question selection from bank
-- [ ] Quiz taking interface
-- [ ] Answer validation
-- [ ] Results display
+
+- [x] Quiz CRUD operations
+- [x] Question selection from bank
+- [x] Quiz taking interface
+- [x] Answer validation
+- [x] Results display
 
 ### Phase 6: Polish & Analytics
-- [ ] Quiz attempt history
-- [ ] Analytics dashboard
-- [ ] Performance optimizations
-- [ ] Error handling & validation
+
+- [x] Quiz attempt history
+- [x] Analytics dashboard
+- [x] Performance optimizations
+- [x] Error handling & validation
 
 ## Recommended IDE Setup
 

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { Button } from './Button';
+import { X, Image as ImageIcon } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 

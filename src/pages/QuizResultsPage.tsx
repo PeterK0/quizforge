@@ -245,7 +245,7 @@ export default function QuizResultsPage() {
         <div className="p-3 bg-bg-tertiary rounded-lg space-y-2">
           <p className="text-sm font-medium text-text-secondary mb-2">Answer Review:</p>
           {question.options.map((opt) => {
-            const isUserAnswer = userAnswerArray.includes(opt.id.toString());
+            const isUserAnswer = (userAnswerArray as string[]).includes(opt.id.toString());
             const isCorrectOption = correctOptionIds.includes(opt.id.toString());
             const isCorrect = isUserAnswer === isCorrectOption;
 

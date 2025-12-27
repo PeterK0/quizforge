@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Subject {
     pub id: i64,
@@ -11,6 +12,7 @@ pub struct Subject {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Topic {
     pub id: i64,
@@ -22,6 +24,7 @@ pub struct Topic {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Question {
     pub id: i64,
@@ -38,6 +41,7 @@ pub struct Question {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Quiz {
     pub id: i64,
@@ -54,6 +58,7 @@ pub struct Quiz {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QuizAttempt {
     pub id: i64,
@@ -66,6 +71,7 @@ pub struct QuizAttempt {
     pub time_taken_seconds: Option<i32>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Exam {
     pub id: i64,
@@ -82,6 +88,7 @@ pub struct Exam {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExamTopic {
     pub id: i64,
@@ -90,6 +97,7 @@ pub struct ExamTopic {
     pub question_count: i32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExamWithTopics {
     pub id: i64,
@@ -107,6 +115,7 @@ pub struct ExamWithTopics {
     pub topics: Vec<ExamTopic>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExamAttempt {
     pub id: i64,

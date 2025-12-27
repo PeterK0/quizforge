@@ -78,6 +78,8 @@ export function QuestionModal({
           isNumeric: blank.isNumeric,
           numericTolerance: blank.numericTolerance,
           unit: blank.unit,
+          inputType: blank.inputType,
+          dropdownOptions: blank.dropdownOptions,
         }))
       );
       setOrderItems(

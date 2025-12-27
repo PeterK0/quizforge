@@ -19,6 +19,7 @@ pub struct Exam {
     pub updated_at: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExamTopic {

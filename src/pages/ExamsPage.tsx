@@ -110,8 +110,8 @@ export default function ExamsPage() {
     <MainLayout
       title={`${subject.name} - Exams`}
       breadcrumbs={[
-        { label: 'Subjects', onClick: () => navigate('/subjects') },
-        { label: subject.name, onClick: () => navigate(`/subjects/${subjectId}/topics`) },
+        { label: 'Subjects', path: '/subjects' },
+        { label: subject.name, path: `/subjects/${subjectId}/topics` },
         { label: 'Exams' },
       ]}
       showBack={true}

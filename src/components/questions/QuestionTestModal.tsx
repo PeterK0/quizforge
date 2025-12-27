@@ -180,7 +180,7 @@ export function QuestionTestModal({
                     question.questionType === 'SINGLE_CHOICE'
                       ? answer === option.id.toString()
                       : Array.isArray(answer) &&
-                        answer.includes(option.id.toString());
+                        (answer as string[]).includes(option.id.toString());
 
                   return (
                     <label

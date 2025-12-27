@@ -150,7 +150,7 @@ export default function AllExamsPage() {
         ],
       };
 
-      const newExam = await invoke<any>('create_exam', { data: examData });
+      await invoke<any>('create_exam', { data: examData });
       setShowCreateModal(false);
 
       // Navigate to exam management page to edit
@@ -208,7 +208,7 @@ export default function AllExamsPage() {
     }
   };
 
-  const handleDeleteExamClick = () => {
+  const handleDeleteExamClick = async () => {
     setShowDeleteConfirm(true);
   };
 

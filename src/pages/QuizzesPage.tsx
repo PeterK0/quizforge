@@ -5,19 +5,8 @@ import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
 import { QuizModal } from '../components/quizzes/QuizModal';
 import { invoke } from '@tauri-apps/api/core';
-import { UpdateQuizData } from '../hooks/useQuizzes';
+import { Quiz, UpdateQuizData } from '../hooks/useQuizzes';
 import { getQuizDefaults } from '../pages/SettingsPage';
-
-interface Quiz {
-  id: number;
-  topicId: number;
-  name: string;
-  description?: string;
-  questionCount: number;
-  timeLimitMinutes?: number;
-  passingScorePercent: number;
-  createdAt: string;
-}
 
 interface Topic {
   id: number;
@@ -163,7 +152,7 @@ export default function QuizzesPage() {
         passingScorePercent: defaults.passingScorePercent,
       };
 
-      const newQuiz = await invoke<any>('create_quiz', { data: quizData });
+      await invoke<any>('create_quiz', { data: quizData });
       setShowCreateModal(false);
 
       // Navigate to quiz management page to edit
@@ -217,7 +206,7 @@ export default function QuizzesPage() {
     }
   };
 
-  const handleDeleteQuizClick = () => {
+  const handleDeleteQuizClick = async () => {
     setShowDeleteConfirm(true);
   };
 

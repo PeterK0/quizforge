@@ -91,15 +91,7 @@ export function QuizCard({ quiz, onEdit, onDelete, onTake }: QuizCardProps) {
           <Button
             variant="danger"
             size="sm"
-            onClick={() => {
-              if (
-                confirm(
-                  'Are you sure you want to delete this quiz? This action cannot be undone.'
-                )
-              ) {
-                onDelete(quiz.id);
-              }
-            }}
+            onClick={() => onDelete(quiz.id)}
             title="Delete quiz"
           >
             <Trash2 size={16} />

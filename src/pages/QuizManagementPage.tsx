@@ -36,6 +36,8 @@ export default function QuizManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [questionCount, setQuestionCount] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [quizToDelete, setQuizToDelete] = useState<Quiz | null>(null);
 
   const topicIdNum = topicId ? parseInt(topicId) : null;
   const subjectIdNum = subjectId ? parseInt(subjectId) : 0;
@@ -117,8 +119,20 @@ export default function QuizManagementPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteQuiz = async (id: number) => {
-    await deleteQuiz(id);
+  const handleDeleteQuizClick = (id: number) => {
+    const quiz = quizzes.find(q => q.id === id);
+    if (!quiz) return;
+
+    setQuizToDelete(quiz);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteQuiz = async () => {
+    if (!quizToDelete) return;
+
+    await deleteQuiz(quizToDelete.id);
+    setShowDeleteConfirm(false);
+    setQuizToDelete(null);
   };
 
   const handleTakeQuiz = (quiz: Quiz) => {
@@ -163,8 +177,9 @@ export default function QuizManagementPage() {
           <Button
             onClick={() => setIsModalOpen(true)}
             disabled={questionCount === 0}
+            className="min-w-[160px] h-[40px] flex items-center justify-center"
           >
-            <Plus size={20} />
+            <Plus size={20} className="mr-2" />
             Create Quiz
           </Button>
         }
@@ -199,8 +214,8 @@ export default function QuizManagementPage() {
             <p className="text-sm text-text-secondary mb-4">
               {questionCount} questions available
             </p>
-            <Button onClick={() => setIsModalOpen(true)}>
-              <Plus size={20} />
+            <Button onClick={() => setIsModalOpen(true)} className="min-w-[190px] h-[40px] flex items-center justify-center">
+              <Plus size={20} className="mr-2" />
               Create First Quiz
             </Button>
           </div>
@@ -216,7 +231,7 @@ export default function QuizManagementPage() {
                   key={quiz.id}
                   quiz={quiz}
                   onEdit={handleEditClick}
-                  onDelete={handleDeleteQuiz}
+                  onDelete={handleDeleteQuizClick}
                   onTake={handleTakeQuiz}
                 />
               ))}
@@ -235,6 +250,38 @@ export default function QuizManagementPage() {
           topicId={topicIdNum}
           availableQuestionCount={questionCount}
         />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && quizToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-bg-primary rounded-lg p-6 max-w-md w-full mx-4 border border-border">
+            <h2 className="text-xl font-bold mb-4 text-text-primary">Delete Quiz</h2>
+            <p className="text-text-secondary mb-6">
+              Are you sure you want to delete "{quizToDelete.name}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setQuizToDelete(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteQuiz}
+                style={{
+                  backgroundColor: 'var(--color-accent-red)',
+                  borderColor: 'var(--color-accent-red)',
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

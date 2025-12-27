@@ -1,10 +1,13 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
+import { ImageUpload } from '../../ui/ImageUpload';
 
 interface MatchPair {
   leftItem: string;
   rightItem: string;
+  leftImagePath?: string;
+  rightImagePath?: string;
 }
 
 interface MatchingEditorProps {
@@ -21,9 +24,9 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
     onChange(pairs.filter((_, i) => i !== index));
   };
 
-  const updatePair = (index: number, field: 'leftItem' | 'rightItem', value: string) => {
+  const updatePair = (index: number, field: 'leftItem' | 'rightItem' | 'leftImagePath' | 'rightImagePath', value: string | undefined) => {
     const newPairs = [...pairs];
-    newPairs[index][field] = value;
+    newPairs[index][field] = value as any;
     onChange(newPairs);
   };
 
@@ -38,7 +41,7 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
             Create pairs where students match items from the left to the right
           </p>
         </div>
-        <Button onClick={addPair} size="sm">
+        <Button type="button" onClick={addPair} size="sm">
           <Plus size={16} className="inline mr-1" />
           Add Pair
         </Button>
@@ -71,8 +74,8 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
                 {index + 1}
               </div>
 
-              <div className="flex-1 flex gap-3 items-center">
-                <div className="flex-1">
+              <div className="flex-1 flex gap-3">
+                <div className="flex-1 space-y-2">
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
                     Left Item
                   </label>
@@ -81,10 +84,15 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
                     onChange={(e) => updatePair(index, 'leftItem', e.target.value)}
                     placeholder="e.g., Term or Question"
                   />
+                  <ImageUpload
+                    value={pair.leftImagePath}
+                    onChange={(path) => updatePair(index, 'leftImagePath', path)}
+                    placeholder="Add image (optional)"
+                  />
                 </div>
 
                 <div
-                  className="px-3 py-2 rounded"
+                  className="px-3 py-2 rounded self-start mt-6"
                   style={{
                     backgroundColor: 'var(--color-accent-blue)',
                     color: 'white',
@@ -93,7 +101,7 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
                   ↔
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 space-y-2">
                   <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-text-secondary)' }}>
                     Right Item
                   </label>
@@ -101,6 +109,11 @@ export function MatchingEditor({ pairs, onChange }: MatchingEditorProps) {
                     value={pair.rightItem}
                     onChange={(e) => updatePair(index, 'rightItem', e.target.value)}
                     placeholder="e.g., Definition or Answer"
+                  />
+                  <ImageUpload
+                    value={pair.rightImagePath}
+                    onChange={(path) => updatePair(index, 'rightImagePath', path)}
+                    placeholder="Add image (optional)"
                   />
                 </div>
               </div>

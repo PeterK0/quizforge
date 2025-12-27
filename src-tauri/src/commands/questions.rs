@@ -41,6 +41,8 @@ pub struct QuestionBlank {
     pub is_numeric: bool,
     pub numeric_tolerance: Option<f64>,
     pub unit: Option<String>,
+    pub input_type: String,
+    pub dropdown_options: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -59,6 +61,8 @@ pub struct QuestionMatch {
     pub question_id: i64,
     pub left_item: String,
     pub right_item: String,
+    pub left_image_path: Option<String>,
+    pub right_image_path: Option<String>,
     pub display_order: i32,
 }
 
@@ -110,6 +114,8 @@ pub struct CreateQuestionBlank {
     pub is_numeric: bool,
     pub numeric_tolerance: Option<f64>,
     pub unit: Option<String>,
+    pub input_type: String,
+    pub dropdown_options: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -132,6 +138,8 @@ pub struct CreateOrderItem {
 pub struct CreateMatchPair {
     pub left_item: String,
     pub right_item: String,
+    pub left_image_path: Option<String>,
+    pub right_image_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -296,8 +304,8 @@ pub fn create_question(
     for blank in &data.blanks {
         conn.execute(
             "INSERT INTO question_blanks (question_id, blank_index, correct_answer, acceptable_answers,
-             is_numeric, numeric_tolerance, unit)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             is_numeric, numeric_tolerance, unit, input_type, dropdown_options)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             (
                 question_id,
                 blank.blank_index,
@@ -306,6 +314,8 @@ pub fn create_question(
                 blank.is_numeric as i32,
                 blank.numeric_tolerance,
                 &blank.unit,
+                &blank.input_type,
+                &blank.dropdown_options,
             ),
         )
         .map_err(|e| e.to_string())?;
@@ -316,8 +326,8 @@ pub fn create_question(
         let tolerance: f64 = numeric_data.tolerance.parse().unwrap_or(0.1);
         conn.execute(
             "INSERT INTO question_blanks (question_id, blank_index, correct_answer, acceptable_answers,
-             is_numeric, numeric_tolerance, unit)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             is_numeric, numeric_tolerance, unit, input_type, dropdown_options)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             (
                 question_id,
                 0,
@@ -326,6 +336,8 @@ pub fn create_question(
                 1,
                 Some(tolerance),
                 &numeric_data.unit,
+                "INPUT",
+                None::<String>,
             ),
         )
         .map_err(|e| e.to_string())?;
@@ -351,12 +363,14 @@ pub fn create_question(
     if let Some(match_pairs) = &data.match_pairs {
         for (index, pair) in match_pairs.iter().enumerate() {
             conn.execute(
-                "INSERT INTO question_matches (question_id, left_item, right_item, display_order)
-                 VALUES (?1, ?2, ?3, ?4)",
+                "INSERT INTO question_matches (question_id, left_item, right_item, left_image_path, right_image_path, display_order)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 (
                     question_id,
                     &pair.left_item,
                     &pair.right_item,
+                    &pair.left_image_path,
+                    &pair.right_image_path,
                     index as i32,
                 ),
             )
@@ -459,8 +473,8 @@ pub fn update_question(
     for blank in &data.blanks {
         conn.execute(
             "INSERT INTO question_blanks (question_id, blank_index, correct_answer, acceptable_answers,
-             is_numeric, numeric_tolerance, unit)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             is_numeric, numeric_tolerance, unit, input_type, dropdown_options)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             (
                 id,
                 blank.blank_index,
@@ -469,6 +483,8 @@ pub fn update_question(
                 blank.is_numeric as i32,
                 blank.numeric_tolerance,
                 &blank.unit,
+                &blank.input_type,
+                &blank.dropdown_options,
             ),
         )
         .map_err(|e| e.to_string())?;
@@ -479,8 +495,8 @@ pub fn update_question(
         let tolerance: f64 = numeric_data.tolerance.parse().unwrap_or(0.1);
         conn.execute(
             "INSERT INTO question_blanks (question_id, blank_index, correct_answer, acceptable_answers,
-             is_numeric, numeric_tolerance, unit)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+             is_numeric, numeric_tolerance, unit, input_type, dropdown_options)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             (
                 id,
                 0,
@@ -489,6 +505,8 @@ pub fn update_question(
                 1,
                 Some(tolerance),
                 &numeric_data.unit,
+                "INPUT",
+                None::<String>,
             ),
         )
         .map_err(|e| e.to_string())?;
@@ -514,12 +532,14 @@ pub fn update_question(
     if let Some(match_pairs) = &data.match_pairs {
         for (index, pair) in match_pairs.iter().enumerate() {
             conn.execute(
-                "INSERT INTO question_matches (question_id, left_item, right_item, display_order)
-                 VALUES (?1, ?2, ?3, ?4)",
+                "INSERT INTO question_matches (question_id, left_item, right_item, left_image_path, right_image_path, display_order)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
                 (
                     id,
                     &pair.left_item,
                     &pair.right_item,
+                    &pair.left_image_path,
+                    &pair.right_image_path,
                     index as i32,
                 ),
             )
@@ -619,7 +639,7 @@ fn get_question_blanks(
     let mut stmt = conn
         .prepare(
             "SELECT id, question_id, blank_index, correct_answer, acceptable_answers,
-             is_numeric, numeric_tolerance, unit
+             is_numeric, numeric_tolerance, unit, input_type, dropdown_options
              FROM question_blanks WHERE question_id = ? ORDER BY blank_index ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -635,6 +655,8 @@ fn get_question_blanks(
                 is_numeric: row.get::<_, i32>(5)? != 0,
                 numeric_tolerance: row.get(6)?,
                 unit: row.get(7)?,
+                input_type: row.get::<_, Option<String>>(8)?.unwrap_or_else(|| "INPUT".to_string()),
+                dropdown_options: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?
@@ -677,7 +699,7 @@ fn get_question_matches(
 ) -> Result<Vec<QuestionMatch>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, question_id, left_item, right_item, display_order
+            "SELECT id, question_id, left_item, right_item, left_image_path, right_image_path, display_order
              FROM question_matches WHERE question_id = ? ORDER BY display_order ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -689,7 +711,9 @@ fn get_question_matches(
                 question_id: row.get(1)?,
                 left_item: row.get(2)?,
                 right_item: row.get(3)?,
-                display_order: row.get(4)?,
+                left_image_path: row.get(4)?,
+                right_image_path: row.get(5)?,
+                display_order: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?

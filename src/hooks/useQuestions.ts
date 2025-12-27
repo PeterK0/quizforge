@@ -35,6 +35,8 @@ export interface QuestionBlank {
   isNumeric: boolean;
   numericTolerance?: number;
   unit?: string;
+  inputType: string;
+  dropdownOptions?: string;
 }
 
 export interface QuestionOrderItem {
@@ -49,6 +51,8 @@ export interface QuestionMatch {
   questionId: number;
   leftItem: string;
   rightItem: string;
+  leftImagePath?: string;
+  rightImagePath?: string;
   displayOrder: number;
 }
 
@@ -85,6 +89,8 @@ export interface CreateQuestionBlank {
   isNumeric: boolean;
   numericTolerance?: number;
   unit?: string;
+  inputType: string;
+  dropdownOptions?: string;
 }
 
 export interface CreateNumericData {
@@ -101,6 +107,8 @@ export interface CreateOrderItem {
 export interface CreateMatchPair {
   leftItem: string;
   rightItem: string;
+  leftImagePath?: string;
+  rightImagePath?: string;
 }
 
 export interface CreateQuestionData {

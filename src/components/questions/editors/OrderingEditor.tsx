@@ -67,7 +67,7 @@ export function OrderingEditor({ items, onChange }: OrderingEditorProps) {
             Arrange items in the correct order. Students will be asked to reorder these.
           </p>
         </div>
-        <Button onClick={addItem} size="sm">
+        <Button type="button" onClick={addItem} size="sm">
           <Plus size={16} className="inline mr-1" />
           Add Item
         </Button>

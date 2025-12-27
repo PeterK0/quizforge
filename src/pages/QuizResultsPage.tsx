@@ -49,8 +49,8 @@ export default function QuizResultsPage() {
     // Grade each question
     const gradedResults: QuestionResult[] = questions.map((question) => {
       const userAnswer = answersMap.get(question.id);
-      const isCorrect = gradeQuestion(question, userAnswer);
-      const pointsEarned = isCorrect ? question.points : 0;
+      const pointsEarned = gradeQuestionWithPartialCredit(question, userAnswer);
+      const isCorrect = pointsEarned === question.points;
 
       return {
         question,
@@ -87,11 +87,11 @@ export default function QuizResultsPage() {
     }
   }, [state]);
 
-  const gradeQuestion = (
+  const gradeQuestionWithPartialCredit = (
     question: QuestionWithDetails,
     userAnswer: QuizAnswer | undefined
-  ): boolean => {
-    if (!userAnswer) return false;
+  ): number => {
+    if (!userAnswer) return 0;
 
     if (
       question.questionType === 'SINGLE_CHOICE' ||
@@ -106,10 +106,12 @@ export default function QuizResultsPage() {
         ? userAnswer.answer.sort()
         : [userAnswer.answer];
 
-      return (
+      const isFullyCorrect = (
         correctOptionIds.length === userAnswerArray.length &&
         correctOptionIds.every((id, idx) => id === userAnswerArray[idx])
       );
+
+      return isFullyCorrect ? question.points : 0;
     }
 
     if (question.questionType === 'FILL_BLANK') {
@@ -117,27 +119,36 @@ export default function QuizResultsPage() {
         ? userAnswer.answer
         : [userAnswer.answer];
 
-      return question.blanks.every((blank, index) => {
+      const totalBlanks = question.blanks.length;
+      if (totalBlanks === 0) return 0;
+
+      const pointsPerBlank = question.points / totalBlanks;
+      let earnedPoints = 0;
+
+      question.blanks.forEach((blank, index) => {
         const answer = userAnswers[index];
-        if (typeof answer !== 'string') return false;
+        if (typeof answer !== 'string') return;
         const userAns = answer.trim().toLowerCase();
-        if (!userAns) return false;
+        if (!userAns) return;
 
         const correctAns = blank.correctAnswer.trim().toLowerCase();
+        let isCorrect = false;
 
         // Check exact match
-        if (userAns === correctAns) return true;
-
+        if (userAns === correctAns) {
+          isCorrect = true;
+        }
         // Check acceptable answers
-        if (blank.acceptableAnswers) {
+        else if (blank.acceptableAnswers) {
           const acceptable = blank.acceptableAnswers
             .split(',')
             .map((a) => a.trim().toLowerCase());
-          if (acceptable.includes(userAns)) return true;
+          if (acceptable.includes(userAns)) {
+            isCorrect = true;
+          }
         }
-
         // Check numeric tolerance
-        if (blank.isNumeric && blank.numericTolerance !== undefined) {
+        else if (blank.isNumeric && blank.numericTolerance !== undefined) {
           const userNum = parseFloat(userAns);
           const correctNum = parseFloat(correctAns);
           if (
@@ -145,42 +156,56 @@ export default function QuizResultsPage() {
             !isNaN(correctNum) &&
             Math.abs(userNum - correctNum) <= blank.numericTolerance
           ) {
-            return true;
+            isCorrect = true;
           }
         }
 
-        return false;
+        if (isCorrect) {
+          earnedPoints += pointsPerBlank;
+        }
       });
+
+      return Math.round(earnedPoints * 100) / 100; // Round to 2 decimal places
     }
 
     if (question.questionType === 'NUMERIC_INPUT') {
-      if (!question.blanks || question.blanks.length === 0) return false;
+      if (!question.blanks || question.blanks.length === 0) return 0;
 
       const blank = question.blanks[0];
       const userAns = typeof userAnswer.answer === 'string' ? userAnswer.answer.trim() : '';
-      if (!userAns) return false;
+      if (!userAns) return 0;
 
       const userNum = parseFloat(userAns);
       const correctNum = parseFloat(blank.correctAnswer);
       const tolerance = blank.numericTolerance || 0.1;
 
-      return (
+      const isCorrect = (
         !isNaN(userNum) &&
         !isNaN(correctNum) &&
         Math.abs(userNum - correctNum) <= tolerance
       );
+
+      return isCorrect ? question.points : 0;
     }
 
     if (question.questionType === 'ORDERING') {
       const userOrder = Array.isArray(userAnswer.answer) ? userAnswer.answer : [];
-      if (userOrder.length !== question.orderItems.length) return false;
+      if (userOrder.length !== question.orderItems.length) return 0;
 
-      // Check if the order matches the correct positions
-      return question.orderItems.every((_, index) => {
+      // Give partial credit for each correctly positioned item
+      const totalItems = question.orderItems.length;
+      const pointsPerItem = question.points / totalItems;
+      let earnedPoints = 0;
+
+      question.orderItems.forEach((_, index) => {
         const userItemId = userOrder[index];
         const itemAtPosition = question.orderItems.find(i => i.id === userItemId);
-        return itemAtPosition && itemAtPosition.correctPosition === index + 1;
+        if (itemAtPosition && itemAtPosition.correctPosition === index + 1) {
+          earnedPoints += pointsPerItem;
+        }
       });
+
+      return Math.round(earnedPoints * 100) / 100;
     }
 
     if (question.questionType === 'MATCHING') {
@@ -188,21 +213,346 @@ export default function QuizResultsPage() {
         ? userAnswer.answer as Record<number, number>
         : {};
 
-      // Check if all pairs are matched correctly
-      return question.matches.every((match) => {
-        // Find which left item should match this pair
+      // Give partial credit for each correct match
+      const totalPairs = question.matches.length;
+      const pointsPerPair = question.points / totalPairs;
+      let earnedPoints = 0;
+
+      question.matches.forEach((match) => {
         const leftItemId = match.id;
         const userRightId = userMatches[leftItemId];
-        // The correct right ID is the same as match.id since they're pairs
-        // Actually, we need to match leftItem to rightItem correctly
-        // The user maps left item ID to right item ID
-        // We need to check if the mapping is correct
-        const matchedPair = question.matches.find(m => m.id === userRightId);
-        return matchedPair && matchedPair.leftItem === match.leftItem && matchedPair.rightItem === match.rightItem;
+        // Check if the user matched this left item to the correct right item
+        if (userRightId === match.id) {
+          earnedPoints += pointsPerPair;
+        }
       });
+
+      return Math.round(earnedPoints * 100) / 100;
     }
 
-    return false;
+    return 0;
+  };
+
+  const renderDetailedAnswerReview = (result: QuestionResult) => {
+    const { question, userAnswer } = result;
+
+    // Single Choice / Multiple Choice
+    if (question.questionType === 'SINGLE_CHOICE' || question.questionType === 'MULTIPLE_CHOICE') {
+      const userAnswerArray = Array.isArray(userAnswer?.answer) ? userAnswer.answer : userAnswer?.answer ? [userAnswer.answer] : [];
+      const correctOptionIds = question.options.filter(opt => opt.isCorrect).map(opt => opt.id.toString());
+
+      return (
+        <div className="p-3 bg-bg-tertiary rounded-lg space-y-2">
+          <p className="text-sm font-medium text-text-secondary mb-2">Answer Review:</p>
+          {question.options.map((opt) => {
+            const isUserAnswer = userAnswerArray.includes(opt.id.toString());
+            const isCorrectOption = correctOptionIds.includes(opt.id.toString());
+            const isCorrect = isUserAnswer === isCorrectOption;
+
+            return (
+              <div
+                key={opt.id}
+                className="flex items-center gap-2 p-2 rounded"
+                style={{
+                  backgroundColor: isCorrectOption ? 'var(--color-accent-green)/10' : 'transparent',
+                  border: isUserAnswer ? '2px solid' : '1px solid',
+                  borderColor: isCorrect
+                    ? 'var(--color-accent-green)'
+                    : isUserAnswer
+                    ? 'var(--color-accent-red)'
+                    : 'var(--color-border)',
+                }}
+              >
+                {isUserAnswer && (
+                  isCorrect ? (
+                    <CheckCircle size={16} style={{ color: 'var(--color-accent-green)' }} />
+                  ) : (
+                    <XCircle size={16} style={{ color: 'var(--color-accent-red)' }} />
+                  )
+                )}
+                {!isUserAnswer && isCorrectOption && (
+                  <CheckCircle size={16} style={{ color: 'var(--color-accent-green)' }} />
+                )}
+                <span className="text-sm" style={{ color: 'var(--color-text-primary)' }}>
+                  {opt.optionText}
+                  {isUserAnswer && ' (Your answer)'}
+                  {!isUserAnswer && isCorrectOption && ' (Correct answer)'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Fill in the Blank
+    if (question.questionType === 'FILL_BLANK') {
+      const userAnswers = Array.isArray(userAnswer?.answer) ? userAnswer.answer : [];
+
+      return (
+        <div className="p-3 bg-bg-tertiary rounded-lg space-y-3">
+          <p className="text-sm font-medium text-text-secondary mb-2">Answer Review ({result.pointsEarned} / {question.points} points):</p>
+          {question.blanks.map((blank, index) => {
+            const userAns = typeof userAnswers[index] === 'string' ? userAnswers[index].trim() : '';
+            const correctAns = blank.correctAnswer.trim();
+
+            let isCorrect = false;
+            if (userAns.toLowerCase() === correctAns.toLowerCase()) {
+              isCorrect = true;
+            } else if (blank.acceptableAnswers) {
+              const acceptable = blank.acceptableAnswers.split(',').map(a => a.trim().toLowerCase());
+              if (acceptable.includes(userAns.toLowerCase())) {
+                isCorrect = true;
+              }
+            } else if (blank.isNumeric && blank.numericTolerance !== undefined) {
+              const userNum = parseFloat(userAns);
+              const correctNum = parseFloat(correctAns);
+              if (!isNaN(userNum) && !isNaN(correctNum) && Math.abs(userNum - correctNum) <= blank.numericTolerance) {
+                isCorrect = true;
+              }
+            }
+
+            return (
+              <div
+                key={index}
+                className="p-2 rounded border"
+                style={{
+                  borderColor: isCorrect ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                  backgroundColor: isCorrect ? 'var(--color-accent-green)/10' : 'var(--color-accent-red)/10',
+                }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  {isCorrect ? (
+                    <CheckCircle size={16} style={{ color: 'var(--color-accent-green)' }} />
+                  ) : (
+                    <XCircle size={16} style={{ color: 'var(--color-accent-red)' }} />
+                  )}
+                  <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                    Blank {index + 1}
+                  </span>
+                </div>
+                <div className="ml-6 text-sm">
+                  <p style={{ color: 'var(--color-text-secondary)' }}>
+                    Your answer: <span style={{ color: 'var(--color-text-primary)' }}>{userAns || '(empty)'}</span>
+                  </p>
+                  {!isCorrect && (
+                    <p style={{ color: 'var(--color-text-secondary)' }}>
+                      Correct answer: <span style={{ color: 'var(--color-accent-green)' }}>{correctAns}</span>
+                      {blank.acceptableAnswers && ` (or: ${blank.acceptableAnswers})`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    // Numeric Input
+    if (question.questionType === 'NUMERIC_INPUT') {
+      const userAns = typeof userAnswer?.answer === 'string' ? userAnswer.answer.trim() : '';
+      const blank = question.blanks?.[0];
+      const correctAns = blank?.correctAnswer || '';
+      const tolerance = blank?.numericTolerance || 0.1;
+
+      const userNum = parseFloat(userAns);
+      const correctNum = parseFloat(correctAns);
+      const isCorrect = !isNaN(userNum) && !isNaN(correctNum) && Math.abs(userNum - correctNum) <= tolerance;
+
+      return (
+        <div
+          className="p-3 rounded border"
+          style={{
+            backgroundColor: isCorrect ? 'var(--color-accent-green)/10' : 'var(--color-accent-red)/10',
+            borderColor: isCorrect ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            {isCorrect ? (
+              <CheckCircle size={16} style={{ color: 'var(--color-accent-green)' }} />
+            ) : (
+              <XCircle size={16} style={{ color: 'var(--color-accent-red)' }} />
+            )}
+            <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+              Answer Review
+            </span>
+          </div>
+          <div className="ml-6 text-sm">
+            <p style={{ color: 'var(--color-text-secondary)' }}>
+              Your answer: <span style={{ color: 'var(--color-text-primary)' }}>{userAns || '(empty)'}</span>
+            </p>
+            {!isCorrect && (
+              <p style={{ color: 'var(--color-text-secondary)' }}>
+                Correct answer: <span style={{ color: 'var(--color-accent-green)' }}>{correctAns}</span>
+                {blank?.unit && ` ${blank.unit}`}
+                {tolerance && ` (±${tolerance})`}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Ordering
+    if (question.questionType === 'ORDERING') {
+      const userOrder = Array.isArray(userAnswer?.answer) ? userAnswer.answer : [];
+      const correctOrder = [...question.orderItems].sort((a, b) => a.correctPosition - b.correctPosition);
+
+      return (
+        <div className="p-3 bg-bg-tertiary rounded-lg space-y-3">
+          <p className="text-sm font-medium text-text-secondary">
+            Answer Review ({result.pointsEarned} / {question.points} points):
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Your Answer */}
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Your Answer:
+              </p>
+              <div className="space-y-2">
+                {userOrder.map((itemId, index) => {
+                  const item = question.orderItems.find(i => i.id === itemId);
+                  const isCorrect = item && item.correctPosition === index + 1;
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 p-2 rounded border"
+                      style={{
+                        borderColor: isCorrect ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                        backgroundColor: isCorrect ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                      }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs flex-shrink-0"
+                        style={{
+                          backgroundColor: isCorrect ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                          color: 'white',
+                        }}
+                      >
+                        {index + 1}
+                      </div>
+                      {isCorrect ? (
+                        <CheckCircle size={16} style={{ color: 'var(--color-accent-green)', flexShrink: 0 }} />
+                      ) : (
+                        <XCircle size={16} style={{ color: 'var(--color-accent-red)', flexShrink: 0 }} />
+                      )}
+                      <span className="text-sm flex-1" style={{ color: 'var(--color-text-primary)' }}>
+                        {item?.itemText || 'Unknown'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Correct Order */}
+            <div>
+              <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                Correct Order:
+              </p>
+              <div className="space-y-2">
+                {correctOrder.map((item, index) => {
+                  const userItemAtPosition = userOrder[index];
+                  const isCorrect = userItemAtPosition === item.id;
+
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center gap-2 p-2 rounded border"
+                      style={{
+                        borderColor: 'var(--color-accent-green)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                      }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded flex items-center justify-center font-bold text-xs flex-shrink-0"
+                        style={{
+                          backgroundColor: 'var(--color-accent-green)',
+                          color: 'white',
+                        }}
+                      >
+                        {index + 1}
+                      </div>
+                      {isCorrect ? (
+                        <CheckCircle size={16} style={{ color: 'var(--color-accent-green)', flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 16, flexShrink: 0 }} />
+                      )}
+                      <span className="text-sm flex-1" style={{ color: 'var(--color-text-primary)' }}>
+                        {item.itemText}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Matching
+    if (question.questionType === 'MATCHING') {
+      const userMatches = typeof userAnswer?.answer === 'object' && !Array.isArray(userAnswer.answer)
+        ? userAnswer.answer as Record<number, number>
+        : {};
+
+      return (
+        <div className="p-3 bg-bg-tertiary rounded-lg space-y-2">
+          <p className="text-sm font-medium text-text-secondary mb-2">
+            Answer Review ({result.pointsEarned} / {question.points} points):
+          </p>
+          <div className="space-y-2">
+            {question.matches.map((match) => {
+              const userRightId = userMatches[match.id];
+              const isCorrect = userRightId === match.id;
+              const userMatchedPair = question.matches.find(m => m.id === userRightId);
+
+              return (
+                <div
+                  key={match.id}
+                  className="p-2 rounded border"
+                  style={{
+                    borderColor: isCorrect ? 'var(--color-accent-green)' : 'var(--color-accent-red)',
+                    backgroundColor: isCorrect ? 'var(--color-accent-green)/10' : 'var(--color-accent-red)/10',
+                  }}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    {isCorrect ? (
+                      <CheckCircle size={16} style={{ color: 'var(--color-accent-green)' }} />
+                    ) : (
+                      <XCircle size={16} style={{ color: 'var(--color-accent-red)' }} />
+                    )}
+                    <span className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                      {match.leftItem}
+                    </span>
+                  </div>
+                  <div className="ml-6 text-sm">
+                    <p style={{ color: 'var(--color-text-secondary)' }}>
+                      Your match: <span style={{ color: 'var(--color-text-primary)' }}>
+                        {userMatchedPair?.rightItem || '(not matched)'}
+                      </span>
+                    </p>
+                    {!isCorrect && (
+                      <p style={{ color: 'var(--color-text-secondary)' }}>
+                        Correct match: <span style={{ color: 'var(--color-accent-green)' }}>
+                          {match.rightItem}
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   if (!state || !state.quiz) {
@@ -379,21 +729,10 @@ export default function QuizResultsPage() {
                 </div>
               </div>
 
-              {/* Show correct answer if question was wrong */}
-              {!result.isCorrect && result.question.options.length > 0 && (
-                <div className="mt-3 p-3 bg-bg-tertiary rounded-lg">
-                  <p className="text-sm text-accent-green mb-2">
-                    Correct answer:
-                  </p>
-                  {result.question.options
-                    .filter((opt) => opt.isCorrect)
-                    .map((opt) => (
-                      <div key={opt.id} className="text-sm text-text-primary">
-                        • {opt.optionText}
-                      </div>
-                    ))}
-                </div>
-              )}
+              {/* Detailed Answer Review */}
+              <div className="mt-3">
+                {renderDetailedAnswerReview(result)}
+              </div>
 
               {/* Explanation */}
               {result.question.explanation && (

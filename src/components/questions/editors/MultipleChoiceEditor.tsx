@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
+import { ImageUpload } from '../../ui/ImageUpload';
 import { CreateQuestionOption } from '../../../hooks/useQuestions';
 
 interface MultipleChoiceEditorProps {
@@ -42,6 +43,12 @@ export function MultipleChoiceEditor({ options, onChange }: MultipleChoiceEditor
     onChange(newOptions);
   };
 
+  const updateOptionImage = (index: number, imagePath: string | undefined) => {
+    const newOptions = [...options];
+    newOptions[index] = { ...newOptions[index], optionImagePath: imagePath };
+    onChange(newOptions);
+  };
+
   const toggleCorrectOption = (index: number) => {
     const newOptions = [...options];
     newOptions[index] = {
@@ -69,49 +76,60 @@ export function MultipleChoiceEditor({ options, onChange }: MultipleChoiceEditor
           </p>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {options.map((option, index) => (
             <div
               key={index}
-              className={`flex items-center gap-2 p-3 rounded-lg border ${
+              className={`p-3 rounded-lg border ${
                 option.isCorrect
                   ? 'border-accent-green bg-accent-green/10'
                   : 'border-border bg-bg-secondary'
               }`}
             >
-              <button
-                type="button"
-                onClick={() => toggleCorrectOption(index)}
-                className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                  option.isCorrect
-                    ? 'border-accent-green bg-accent-green'
-                    : 'border-border hover:border-accent-green'
-                }`}
-                title="Toggle correct answer"
-              >
-                {option.isCorrect ? (
-                  <CheckSquare size={14} className="text-white" />
-                ) : (
-                  <Square size={14} className="text-text-secondary" />
-                )}
-              </button>
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => toggleCorrectOption(index)}
+                  className={`flex-shrink-0 w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
+                    option.isCorrect
+                      ? 'border-accent-green bg-accent-green'
+                      : 'border-border hover:border-accent-green'
+                  }`}
+                  title="Toggle correct answer"
+                >
+                  {option.isCorrect ? (
+                    <CheckSquare size={14} className="text-white" />
+                  ) : (
+                    <Square size={14} className="text-text-secondary" />
+                  )}
+                </button>
 
-              <Input
-                value={option.optionText}
-                onChange={(e) => updateOptionText(index, e.target.value)}
-                placeholder={`Option ${index + 1}`}
-                className="flex-1"
-              />
+                <Input
+                  value={option.optionText}
+                  onChange={(e) => updateOptionText(index, e.target.value)}
+                  placeholder={`Option ${index + 1}`}
+                  className="flex-1"
+                />
 
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => removeOption(index)}
-                title="Remove option"
-              >
-                <Trash2 size={16} />
-              </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => removeOption(index)}
+                  title="Remove option"
+                >
+                  <Trash2 size={16} />
+                </Button>
+              </div>
+
+              <div className="pl-8">
+                <ImageUpload
+                  value={option.optionImagePath}
+                  onChange={(path) => updateOptionImage(index, path)}
+                  placeholder="Add image"
+                  compact={true}
+                />
+              </div>
             </div>
           ))}
         </div>

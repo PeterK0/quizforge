@@ -47,6 +47,8 @@ export interface QuestionBlank {
   isNumeric: boolean;
   numericTolerance?: number;
   unit?: string;
+  inputType: string;
+  dropdownOptions?: string[];
 }
 
 // Matching
@@ -55,6 +57,8 @@ export interface QuestionMatch {
   questionId: number;
   leftItem: string;
   rightItem: string;
+  leftImagePath?: string;
+  rightImagePath?: string;
   displayOrder: number;
 }
 

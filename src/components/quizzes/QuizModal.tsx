@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { Trash2 } from 'lucide-react';
 import { Quiz, CreateQuizData } from '../../hooks/useQuizzes';
 
 interface QuizModalProps {
@@ -11,6 +12,7 @@ interface QuizModalProps {
   quiz?: Quiz | null;
   topicId: number;
   availableQuestionCount: number;
+  onDelete?: () => Promise<void>;
 }
 
 export function QuizModal({
@@ -20,6 +22,7 @@ export function QuizModal({
   quiz,
   topicId,
   availableQuestionCount,
+  onDelete,
 }: QuizModalProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -236,13 +239,32 @@ export function QuizModal({
         </div>
 
         {/* Submit Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Saving...' : quiz ? 'Update Quiz' : 'Create Quiz'}
-          </Button>
+        <div className="pt-4 border-t border-border">
+          {/* Delete Button - Only show when editing */}
+          {quiz && onDelete && (
+            <div className="mb-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={onDelete}
+                className="w-full flex items-center justify-center gap-2"
+                style={{ color: 'var(--color-accent-red)', borderColor: 'var(--color-accent-red)' }}
+              >
+                <Trash2 size={16} />
+                <span>Delete Quiz</span>
+              </Button>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? 'Saving...' : quiz ? 'Update Quiz' : 'Create Quiz'}
+            </Button>
+          </div>
         </div>
       </form>
     </Modal>

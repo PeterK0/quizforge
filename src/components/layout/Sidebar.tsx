@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { BookOpen, BarChart3, GraduationCap } from 'lucide-react';
+import { BookOpen, BarChart3, GraduationCap, FileText, Settings } from 'lucide-react';
 
 const navItems = [
   { path: '/subjects', icon: BookOpen, label: 'Subjects' },
   { path: '/quizzes', icon: GraduationCap, label: 'Quizzes' },
+  { path: '/exams', icon: FileText, label: 'Exams' },
   { path: '/analytics', icon: BarChart3, label: 'Analytics' },
 ];
 
@@ -49,8 +50,27 @@ export function Sidebar() {
         </ul>
       </nav>
 
+      {/* Settings Button */}
+      <div className="p-4 border-t" style={{ borderColor: 'var(--color-border)' }}>
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+              isActive ? 'nav-link-active' : 'nav-link'
+            }`
+          }
+          style={({ isActive }) => ({
+            backgroundColor: isActive ? 'var(--color-accent-blue)' : 'transparent',
+            color: isActive ? 'white' : 'var(--color-text-primary)',
+          })}
+        >
+          <Settings size={20} />
+          <span className="font-medium">Settings</span>
+        </NavLink>
+      </div>
+
       {/* Footer */}
-      <div className="p-4 border-t text-sm" style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+      <div className="px-4 pb-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
         <p>Version 0.1.0</p>
       </div>
     </aside>

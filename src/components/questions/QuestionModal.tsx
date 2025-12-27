@@ -17,6 +17,7 @@ import { FillBlankEditor } from './editors/FillBlankEditor';
 import { NumericInputEditor } from './editors/NumericInputEditor';
 import { OrderingEditor } from './editors/OrderingEditor';
 import { MatchingEditor } from './editors/MatchingEditor';
+import { ImageUpload } from '../ui/ImageUpload';
 
 interface QuestionModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export function QuestionModal({
 }: QuestionModalProps) {
   const [questionType, setQuestionType] = useState<QuestionType>('SINGLE_CHOICE');
   const [questionText, setQuestionText] = useState('');
+  const [questionImagePath, setQuestionImagePath] = useState<string | undefined>(undefined);
   const [explanation, setExplanation] = useState('');
   const [difficulty, setDifficulty] = useState<Difficulty>('MEDIUM');
   const [points, setPoints] = useState(1);
@@ -55,6 +57,7 @@ export function QuestionModal({
     if (question) {
       setQuestionType(question.questionType as QuestionType);
       setQuestionText(question.questionText);
+      setQuestionImagePath(question.questionImagePath);
       setExplanation(question.explanation || '');
       setDifficulty(question.difficulty as Difficulty);
       setPoints(question.points);
@@ -77,6 +80,20 @@ export function QuestionModal({
           unit: blank.unit,
         }))
       );
+      setOrderItems(
+        question.orderItems.map((item) => ({
+          text: item.itemText,
+          correctPosition: item.correctPosition,
+        }))
+      );
+      setMatchPairs(
+        question.matches.map((match) => ({
+          leftItem: match.leftItem,
+          rightItem: match.rightItem,
+          leftImagePath: match.leftImagePath,
+          rightImagePath: match.rightImagePath,
+        }))
+      );
     } else {
       resetForm();
     }
@@ -85,6 +102,7 @@ export function QuestionModal({
   const resetForm = () => {
     setQuestionType('SINGLE_CHOICE');
     setQuestionText('');
+    setQuestionImagePath(undefined);
     setExplanation('');
     setDifficulty('MEDIUM');
     setPoints(1);
@@ -148,7 +166,7 @@ export function QuestionModal({
       topicId: topicId,
       questionType: questionType,
       questionText: questionText,
-      questionImagePath: undefined,
+      questionImagePath: questionImagePath,
       explanation: explanation || undefined,
       difficulty,
       points,
@@ -239,6 +257,14 @@ export function QuestionModal({
               required
             />
           </div>
+
+          {/* Question Image */}
+          <ImageUpload
+            value={questionImagePath}
+            onChange={setQuestionImagePath}
+            label="Question Image (Optional)"
+            placeholder="Add image to question"
+          />
 
           {/* Type-specific editors */}
           {questionType === 'SINGLE_CHOICE' && (

@@ -1,11 +1,14 @@
-import { Edit2, Trash2, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Edit2, Trash2, CheckCircle, Play } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { QuestionWithDetails } from '../../hooks/useQuestions';
+import { getImageUrl } from '../../utils/images';
 
 interface QuestionCardProps {
   question: QuestionWithDetails;
   onEdit: (question: QuestionWithDetails) => void;
   onDelete: (id: number) => void;
+  onTest: (question: QuestionWithDetails) => void;
 }
 
 const DIFFICULTY_COLORS = {
@@ -26,7 +29,22 @@ const QUESTION_TYPE_LABELS = {
   CALCULATION: 'Calculation',
 };
 
-export function QuestionCard({ question, onEdit, onDelete }: QuestionCardProps) {
+export function QuestionCard({ question, onEdit, onDelete, onTest }: QuestionCardProps) {
+  const [questionImageUrl, setQuestionImageUrl] = useState<string | undefined>();
+
+  useEffect(() => {
+    const loadImageUrl = async () => {
+      if (question.questionImagePath) {
+        const url = await getImageUrl(question.questionImagePath);
+        setQuestionImageUrl(url);
+      } else {
+        setQuestionImageUrl(undefined);
+      }
+    };
+
+    loadImageUrl();
+  }, [question]);
+
   const difficultyColor =
     DIFFICULTY_COLORS[question.difficulty as keyof typeof DIFFICULTY_COLORS] ||
     'text-text-secondary';
@@ -57,6 +75,15 @@ export function QuestionCard({ question, onEdit, onDelete }: QuestionCardProps) 
           <p className="text-text-primary mb-3 line-clamp-3">
             {question.questionText}
           </p>
+
+          {/* Question Image Preview */}
+          {questionImageUrl && (
+            <img
+              src={questionImageUrl}
+              alt="Question preview"
+              className="max-w-full max-h-32 rounded mb-3"
+            />
+          )}
 
           {/* Options or Blanks preview */}
           {question.options.length > 0 && (
@@ -101,6 +128,13 @@ export function QuestionCard({ question, onEdit, onDelete }: QuestionCardProps) 
         {/* Actions */}
         <div className="flex gap-2">
           <Button
+            size="sm"
+            onClick={() => onTest(question)}
+            title="Test question"
+          >
+            <Play size={16} />
+          </Button>
+          <Button
             variant="secondary"
             size="sm"
             onClick={() => onEdit(question)}
@@ -111,15 +145,7 @@ export function QuestionCard({ question, onEdit, onDelete }: QuestionCardProps) 
           <Button
             variant="danger"
             size="sm"
-            onClick={() => {
-              if (
-                confirm(
-                  'Are you sure you want to delete this question? This action cannot be undone.'
-                )
-              ) {
-                onDelete(question.id);
-              }
-            }}
+            onClick={() => onDelete(question.id)}
             title="Delete question"
           >
             <Trash2 size={16} />

@@ -23,6 +23,8 @@ export function FillBlankEditor({ blanks, onChange }: FillBlankEditorProps) {
       isNumeric: false,
       numericTolerance: undefined,
       unit: undefined,
+      inputType: 'INPUT',
+      dropdownOptions: undefined,
     };
 
     onChange([...blanks, newBlank]);
@@ -110,6 +112,57 @@ export function FillBlankEditor({ blanks, onChange }: FillBlankEditorProps) {
               <div className="space-y-2">
                 <div>
                   <label className="block text-xs font-medium text-text-secondary mb-1">
+                    Input Type *
+                  </label>
+                  <select
+                    value={blank.inputType || 'INPUT'}
+                    onChange={(e) =>
+                      updateBlank(index, 'inputType', e.target.value)
+                    }
+                    className="w-full px-3 py-2 bg-bg-tertiary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                  >
+                    <option value="INPUT">Text Input</option>
+                    <option value="DROPDOWN">Dropdown</option>
+                  </select>
+                </div>
+
+                {blank.inputType === 'DROPDOWN' ? (
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">
+                      Dropdown Options (comma-separated) *
+                    </label>
+                    <Input
+                      value={blank.dropdownOptions || ''}
+                      onChange={(e) =>
+                        updateBlank(index, 'dropdownOptions', e.target.value)
+                      }
+                      placeholder="e.g., Option A, Option B, Option C"
+                    />
+                    <p className="text-xs text-text-secondary mt-1">
+                      Enter the options that will appear in the dropdown. The correct answer must match one of these options exactly.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">
+                      Acceptable Alternative Answers (comma-separated)
+                    </label>
+                    <Input
+                      value={blank.acceptableAnswers || ''}
+                      onChange={(e) =>
+                        updateBlank(index, 'acceptableAnswers', e.target.value)
+                      }
+                      placeholder="e.g., answer1, answer2, answer3"
+                    />
+                    <p className="text-xs text-text-secondary mt-1">
+                      These will be accepted as correct answers in addition to the main
+                      answer
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">
                     Correct Answer *
                   </label>
                   <Input
@@ -121,23 +174,6 @@ export function FillBlankEditor({ blanks, onChange }: FillBlankEditorProps) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">
-                    Acceptable Alternative Answers (comma-separated)
-                  </label>
-                  <Input
-                    value={blank.acceptableAnswers || ''}
-                    onChange={(e) =>
-                      updateBlank(index, 'acceptableAnswers', e.target.value)
-                    }
-                    placeholder="e.g., answer1, answer2, answer3"
-                  />
-                  <p className="text-xs text-text-secondary mt-1">
-                    These will be accepted as correct answers in addition to the main
-                    answer
-                  </p>
-                </div>
-
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -147,16 +183,19 @@ export function FillBlankEditor({ blanks, onChange }: FillBlankEditorProps) {
                       updateBlank(index, 'isNumeric', e.target.checked)
                     }
                     className="rounded border-border"
+                    disabled={blank.inputType === 'DROPDOWN'}
                   />
                   <label
                     htmlFor={`numeric-${index}`}
-                    className="text-xs text-text-secondary cursor-pointer"
+                    className={`text-xs cursor-pointer ${
+                      blank.inputType === 'DROPDOWN' ? 'text-text-tertiary' : 'text-text-secondary'
+                    }`}
                   >
                     This is a numeric answer
                   </label>
                 </div>
 
-                {blank.isNumeric && (
+                {blank.isNumeric && blank.inputType !== 'DROPDOWN' && (
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-text-secondary mb-1">

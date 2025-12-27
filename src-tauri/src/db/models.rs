@@ -65,3 +65,56 @@ pub struct QuizAttempt {
     pub percentage: Option<f64>,
     pub time_taken_seconds: Option<i32>,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Exam {
+    pub id: i64,
+    pub subject_id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub total_question_count: i32,
+    pub time_limit_minutes: Option<i32>,
+    pub shuffle_questions: bool,
+    pub shuffle_options: bool,
+    pub show_answers_after: String,
+    pub passing_score_percent: i32,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExamTopic {
+    pub id: i64,
+    pub exam_id: i64,
+    pub topic_id: i64,
+    pub question_count: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExamWithTopics {
+    pub id: i64,
+    pub subject_id: i64,
+    pub name: String,
+    pub description: Option<String>,
+    pub total_question_count: i32,
+    pub time_limit_minutes: Option<i32>,
+    pub shuffle_questions: bool,
+    pub shuffle_options: bool,
+    pub show_answers_after: String,
+    pub passing_score_percent: i32,
+    pub created_at: String,
+    pub updated_at: String,
+    pub topics: Vec<ExamTopic>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ExamAttempt {
+    pub id: i64,
+    pub exam_id: i64,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+    pub score: Option<i32>,
+    pub max_score: Option<i32>,
+    pub percentage: Option<f64>,
+    pub time_taken_seconds: Option<i32>,
+}

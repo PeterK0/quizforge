@@ -42,6 +42,27 @@ pub async fn init_database(app: &AppHandle) -> Result<(), Box<dyn std::error::Er
         conn.execute(statement, [])?;
     }
 
+    // Run migrations to add new columns if they don't exist
+    // Migration for input_type and dropdown_options in question_blanks
+    let _ = conn.execute(
+        "ALTER TABLE question_blanks ADD COLUMN input_type TEXT DEFAULT 'INPUT' CHECK (input_type IN ('INPUT', 'DROPDOWN'))",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE question_blanks ADD COLUMN dropdown_options TEXT",
+        [],
+    );
+
+    // Migration for image paths in question_matches
+    let _ = conn.execute(
+        "ALTER TABLE question_matches ADD COLUMN left_image_path TEXT",
+        [],
+    );
+    let _ = conn.execute(
+        "ALTER TABLE question_matches ADD COLUMN right_image_path TEXT",
+        [],
+    );
+
     println!("Database initialized successfully");
 
     // Store connection in app state

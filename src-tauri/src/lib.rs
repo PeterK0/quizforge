@@ -5,6 +5,8 @@ use commands::subjects::*;
 use commands::topics::*;
 use commands::questions::*;
 use commands::quizzes::*;
+use commands::exams::*;
+use commands::images::*;
 
 #[allow(unused_imports)]
 use tauri::Manager;
@@ -55,6 +57,16 @@ pub fn run() {
             get_all_quiz_attempts,
             save_quiz_attempt,
             get_topic_performance,
+            get_exams,
+            get_exam,
+            create_exam,
+            update_exam,
+            delete_exam,
+            get_all_exam_attempts,
+            save_exam_attempt,
+            get_subject_performance,
+            copy_image_to_assets,
+            read_image_as_data_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

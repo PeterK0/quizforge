@@ -7,9 +7,10 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -34,16 +35,25 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-      onClick={onClose}
+      onClick={(e) => {
+        // Only close if clicking directly on the backdrop, not on children
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
-        className="w-full max-w-lg rounded-lg shadow-xl flex flex-col"
+        className={`w-full rounded-lg shadow-xl flex flex-col ${
+          size === 'sm' ? 'max-w-md' :
+          size === 'md' ? 'max-w-lg' :
+          size === 'lg' ? 'max-w-2xl' :
+          'max-w-4xl'
+        }`}
         style={{
           backgroundColor: 'var(--color-bg-secondary)',
           borderColor: 'var(--color-border)',
           maxHeight: 'calc(100vh - 4rem)',
         }}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b flex-shrink-0" style={{ borderColor: 'var(--color-border)' }}>

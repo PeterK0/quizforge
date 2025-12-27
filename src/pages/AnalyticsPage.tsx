@@ -19,6 +19,20 @@ interface QuizAttempt {
   passed: boolean;
 }
 
+interface ExamAttempt {
+  id: number;
+  examId: number;
+  examName: string;
+  subjectName: string;
+  startedAt: string;
+  completedAt: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  timeTakenSeconds: number;
+  passed: boolean;
+}
+
 interface TopicPerformance {
   topicName: string;
   subjectName: string;
@@ -27,11 +41,21 @@ interface TopicPerformance {
   passRate: number;
 }
 
+interface SubjectPerformance {
+  subjectName: string;
+  attempts: number;
+  averageScore: number;
+  passRate: number;
+}
+
 export default function AnalyticsPage() {
   const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>([]);
   const [topicPerformance, setTopicPerformance] = useState<TopicPerformance[]>([]);
+  const [subjectPerformance, setSubjectPerformance] = useState<SubjectPerformance[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'quizzes' | 'exams'>('quizzes');
 
   useEffect(() => {
     loadData();
@@ -40,12 +64,16 @@ export default function AnalyticsPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [attemptsData, topicData] = await Promise.all([
+      const [attemptsData, examAttemptsData, topicData, subjectData] = await Promise.all([
         invoke<QuizAttempt[]>('get_all_quiz_attempts'),
+        invoke<ExamAttempt[]>('get_all_exam_attempts').catch(() => []),
         invoke<TopicPerformance[]>('get_topic_performance').catch(() => []),
+        invoke<SubjectPerformance[]>('get_subject_performance').catch(() => []),
       ]);
       setAttempts(attemptsData);
+      setExamAttempts(examAttemptsData);
       setTopicPerformance(topicData);
+      setSubjectPerformance(subjectData);
       setError(null);
     } catch (err) {
       console.error('Failed to load analytics:', err);
@@ -86,6 +114,37 @@ export default function AnalyticsPage() {
     return { totalAttempts, averageScore, passRate, averageTime, trend };
   };
 
+  const calculateExamStats = () => {
+    if (examAttempts.length === 0) {
+      return {
+        totalAttempts: 0,
+        averageScore: 0,
+        passRate: 0,
+        averageTime: 0,
+        trend: 'neutral' as const,
+      };
+    }
+
+    const totalAttempts = examAttempts.length;
+    const averageScore = examAttempts.reduce((sum, a) => sum + a.percentage, 0) / totalAttempts;
+    const passRate = (examAttempts.filter(a => a.passed).length / totalAttempts) * 100;
+    const averageTime = examAttempts.reduce((sum, a) => sum + a.timeTakenSeconds, 0) / totalAttempts;
+
+    // Calculate trend (compare last 5 to previous 5)
+    let trend: 'up' | 'down' | 'neutral' = 'neutral';
+    if (examAttempts.length >= 10) {
+      const recent = examAttempts.slice(0, 5);
+      const previous = examAttempts.slice(5, 10);
+      const recentAvg = recent.reduce((sum, a) => sum + a.percentage, 0) / 5;
+      const previousAvg = previous.reduce((sum, a) => sum + a.percentage, 0) / 5;
+
+      if (recentAvg > previousAvg + 5) trend = 'up';
+      else if (recentAvg < previousAvg - 5) trend = 'down';
+    }
+
+    return { totalAttempts, averageScore, passRate, averageTime, trend };
+  };
+
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -98,10 +157,17 @@ export default function AnalyticsPage() {
   };
 
   const stats = calculateStats();
+  const examStats = calculateExamStats();
 
   // Prepare chart data (last 10 attempts)
   const chartData = attempts.slice(0, 10).reverse().map((attempt, index) => ({
     name: `#${attempts.length - index}`,
+    score: attempt.percentage,
+    date: new Date(attempt.completedAt).toLocaleDateString(),
+  }));
+
+  const examChartData = examAttempts.slice(0, 10).reverse().map((attempt, index) => ({
+    name: `#${examAttempts.length - index}`,
     score: attempt.percentage,
     date: new Date(attempt.completedAt).toLocaleDateString(),
   }));
@@ -127,8 +193,35 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6 border-b" style={{ borderColor: 'var(--color-border)' }}>
+        <button
+          onClick={() => setActiveTab('quizzes')}
+          className="px-6 py-3 font-medium transition-colors"
+          style={{
+            color: activeTab === 'quizzes' ? 'var(--color-accent-blue)' : 'var(--color-text-secondary)',
+            borderBottom: activeTab === 'quizzes' ? '2px solid var(--color-accent-blue)' : 'none',
+          }}
+        >
+          Quiz Analytics
+        </button>
+        <button
+          onClick={() => setActiveTab('exams')}
+          className="px-6 py-3 font-medium transition-colors"
+          style={{
+            color: activeTab === 'exams' ? 'var(--color-accent-blue)' : 'var(--color-text-secondary)',
+            borderBottom: activeTab === 'exams' ? '2px solid var(--color-accent-blue)' : 'none',
+          }}
+        >
+          Exam Analytics
+        </button>
+      </div>
+
+      {/* Quiz Analytics Section */}
+      {activeTab === 'quizzes' && (
+        <>
+          {/* Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Total Attempts</span>
@@ -360,6 +453,244 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* Exam Analytics Section */}
+      {activeTab === 'exams' && (
+        <>
+          {/* Exam Stats Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Total Attempts</span>
+              <Target size={20} style={{ color: 'var(--color-accent-blue)' }} />
+            </div>
+            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              {examStats.totalAttempts}
+            </p>
+          </div>
+
+          <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Average Score</span>
+              <Award size={20} style={{ color: 'var(--color-accent-green)' }} />
+            </div>
+            <div className="flex items-end gap-2">
+              <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+                {examStats.averageScore.toFixed(1)}%
+              </p>
+              {examStats.trend === 'up' && <TrendingUp size={24} style={{ color: 'var(--color-accent-green)' }} />}
+              {examStats.trend === 'down' && <TrendingDown size={24} style={{ color: 'var(--color-accent-red)' }} />}
+              {examStats.trend === 'neutral' && <Minus size={24} style={{ color: 'var(--color-text-secondary)' }} />}
+            </div>
+          </div>
+
+          <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Pass Rate</span>
+              <Award size={20} style={{ color: 'var(--color-accent-yellow)' }} />
+            </div>
+            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              {examStats.passRate.toFixed(0)}%
+            </p>
+          </div>
+
+          <div className="p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Avg Time</span>
+              <Clock size={20} style={{ color: 'var(--color-accent-blue)' }} />
+            </div>
+            <p className="text-3xl font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              {formatDuration(Math.round(examStats.averageTime))}
+            </p>
+          </div>
+        </div>
+
+        {/* Exam Performance Chart */}
+        {examAttempts.length > 0 && (
+          <div className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+              Exam Performance Trend (Last 10 Attempts)
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={examChartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="name"
+                  stroke="var(--color-text-secondary)"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  stroke="var(--color-text-secondary)"
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px'
+                  }}
+                  labelStyle={{ color: 'var(--color-text-primary)' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="var(--color-accent-green)"
+                  strokeWidth={2}
+                  dot={{ fill: 'var(--color-accent-green)', r: 4 }}
+                  activeDot={{ r: 6 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Subject Performance Breakdown */}
+        {subjectPerformance.length > 0 && (
+          <div className="mb-8 p-6 rounded-lg border" style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}>
+            <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+              Performance by Subject
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={subjectPerformance}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis
+                  dataKey="subjectName"
+                  stroke="var(--color-text-secondary)"
+                  style={{ fontSize: '12px' }}
+                  angle={-45}
+                  textAnchor="end"
+                  height={100}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  stroke="var(--color-text-secondary)"
+                  style={{ fontSize: '12px' }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Bar
+                  dataKey="averageScore"
+                  fill="var(--color-accent-green)"
+                  radius={[8, 8, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Subject Stats Table */}
+            <div className="mt-6 space-y-2">
+              {subjectPerformance.map((subject, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 rounded-lg"
+                  style={{ backgroundColor: 'var(--color-bg-tertiary)' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <BookOpen size={20} style={{ color: 'var(--color-accent-blue)' }} />
+                    <div>
+                      <p className="font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                        {subject.subjectName}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="text-right">
+                      <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                        {subject.averageScore.toFixed(1)}%
+                      </p>
+                      <p style={{ color: 'var(--color-text-secondary)' }}>Avg Score</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                        {subject.passRate.toFixed(0)}%
+                      </p>
+                      <p style={{ color: 'var(--color-text-secondary)' }}>Pass Rate</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                        {subject.attempts}
+                      </p>
+                      <p style={{ color: 'var(--color-text-secondary)' }}>Attempts</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Exam History */}
+        <div>
+          <h3 className="text-xl font-semibold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+            Exam History
+          </h3>
+
+          {examAttempts.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-lg mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                No exam attempts yet
+              </p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Complete some exams to see your performance history
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {examAttempts.map((attempt) => (
+                <div
+                  key={attempt.id}
+                  className="p-4 rounded-lg border"
+                  style={{ backgroundColor: 'var(--color-bg-secondary)', borderColor: 'var(--color-border)' }}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>
+                        {attempt.examName}
+                      </h4>
+                      <p className="text-sm mb-2" style={{ color: 'var(--color-text-secondary)' }}>
+                        {attempt.subjectName}
+                      </p>
+                      <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                        {formatDate(attempt.completedAt)}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold" style={{
+                          color: attempt.passed ? 'var(--color-accent-green)' : 'var(--color-accent-red)'
+                        }}>
+                          {attempt.percentage.toFixed(0)}%
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                          {attempt.score}/{attempt.maxScore} points
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>
+                          {formatDuration(attempt.timeTakenSeconds)}
+                        </p>
+                        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                          {attempt.passed ? 'Passed' : 'Failed'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        </>
+      )}
     </MainLayout>
   );
 }

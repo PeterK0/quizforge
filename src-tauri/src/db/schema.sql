@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS question_blanks (
     is_numeric INTEGER DEFAULT 0,
     numeric_tolerance REAL,
     unit TEXT,
+    input_type TEXT DEFAULT 'INPUT' CHECK (input_type IN ('INPUT', 'DROPDOWN')),
+    dropdown_options TEXT,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
@@ -83,6 +85,8 @@ CREATE TABLE IF NOT EXISTS question_matches (
     question_id INTEGER NOT NULL,
     left_item TEXT NOT NULL,
     right_item TEXT NOT NULL,
+    left_image_path TEXT,
+    right_image_path TEXT,
     display_order INTEGER DEFAULT 0,
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
@@ -141,6 +145,61 @@ CREATE TABLE IF NOT EXISTS attempt_responses (
     FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
+-- Exams table (subject-level quizzes that can pull from multiple topics)
+CREATE TABLE IF NOT EXISTS exams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    total_question_count INTEGER NOT NULL,
+    time_limit_minutes INTEGER,
+    shuffle_questions INTEGER DEFAULT 1,
+    shuffle_options INTEGER DEFAULT 1,
+    show_answers_after TEXT DEFAULT 'END_OF_QUIZ' CHECK (
+        show_answers_after IN ('EACH_QUESTION', 'END_OF_QUIZ', 'NEVER')
+    ),
+    passing_score_percent INTEGER DEFAULT 60,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+);
+
+-- Exam topics (which topics are included and how many questions from each)
+CREATE TABLE IF NOT EXISTS exam_topics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exam_id INTEGER NOT NULL,
+    topic_id INTEGER NOT NULL,
+    question_count INTEGER NOT NULL,
+    FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
+    FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE CASCADE
+);
+
+-- Exam attempts (history)
+CREATE TABLE IF NOT EXISTS exam_attempts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    exam_id INTEGER NOT NULL,
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    score INTEGER,
+    max_score INTEGER,
+    percentage REAL,
+    time_taken_seconds INTEGER,
+    FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+);
+
+-- Individual question responses in an exam attempt
+CREATE TABLE IF NOT EXISTS exam_responses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    attempt_id INTEGER NOT NULL,
+    question_id INTEGER NOT NULL,
+    response_data TEXT NOT NULL,
+    is_correct INTEGER,
+    points_earned INTEGER DEFAULT 0,
+    time_spent_seconds INTEGER,
+    FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE,
+    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+);
+
 -- Indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_topics_subject ON topics(subject_id);
 CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject_id);
@@ -150,3 +209,9 @@ CREATE INDEX IF NOT EXISTS idx_quizzes_topic ON quizzes(topic_id);
 CREATE INDEX IF NOT EXISTS idx_attempts_quiz ON quiz_attempts(quiz_id);
 CREATE INDEX IF NOT EXISTS idx_responses_attempt ON attempt_responses(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_responses_question ON attempt_responses(question_id);
+CREATE INDEX IF NOT EXISTS idx_exams_subject ON exams(subject_id);
+CREATE INDEX IF NOT EXISTS idx_exam_topics_exam ON exam_topics(exam_id);
+CREATE INDEX IF NOT EXISTS idx_exam_topics_topic ON exam_topics(topic_id);
+CREATE INDEX IF NOT EXISTS idx_exam_attempts_exam ON exam_attempts(exam_id);
+CREATE INDEX IF NOT EXISTS idx_exam_responses_attempt ON exam_responses(attempt_id);
+CREATE INDEX IF NOT EXISTS idx_exam_responses_question ON exam_responses(question_id);

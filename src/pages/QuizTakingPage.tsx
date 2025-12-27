@@ -9,6 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { NumericInputRenderer } from '../components/questions/renderers/NumericInputRenderer';
 import { OrderingRenderer } from '../components/questions/renderers/OrderingRenderer';
 import { MatchingRenderer } from '../components/questions/renderers/MatchingRenderer';
+import { getImageUrl } from '../utils/images';
 
 interface QuizAnswer {
   questionId: number;
@@ -30,6 +31,8 @@ export default function QuizTakingPage() {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [startTime] = useState<number>(Date.now());
+  const [questionImageUrl, setQuestionImageUrl] = useState<string | undefined>();
+  const [optionImageUrls, setOptionImageUrls] = useState<Map<number, string>>(new Map());
 
   useEffect(() => {
     if (quizId) {
@@ -53,6 +56,37 @@ export default function QuizTakingPage() {
 
     return () => clearInterval(timer);
   }, [timeRemaining]);
+
+  // Load image URLs when current question changes
+  useEffect(() => {
+    const loadImageUrls = async () => {
+      if (questions.length === 0) return;
+
+      const currentQuestion = questions[currentQuestionIndex];
+
+      // Load question image
+      if (currentQuestion.questionImagePath) {
+        const url = await getImageUrl(currentQuestion.questionImagePath);
+        setQuestionImageUrl(url);
+      } else {
+        setQuestionImageUrl(undefined);
+      }
+
+      // Load option images
+      const urlMap = new Map<number, string>();
+      for (const option of currentQuestion.options) {
+        if (option.optionImagePath) {
+          const url = await getImageUrl(option.optionImagePath);
+          if (url) {
+            urlMap.set(option.id, url);
+          }
+        }
+      }
+      setOptionImageUrls(urlMap);
+    };
+
+    loadImageUrls();
+  }, [currentQuestionIndex, questions]);
 
   const loadQuizAndQuestions = async (quizId: number) => {
     try {
@@ -210,6 +244,13 @@ export default function QuizTakingPage() {
           <p className="text-lg text-text-primary whitespace-pre-wrap">
             {currentQuestion.questionText}
           </p>
+          {questionImageUrl && (
+            <img
+              src={questionImageUrl}
+              alt="Question"
+              className="max-w-full max-h-64 rounded-lg mt-3"
+            />
+          )}
         </div>
 
         {/* Answer Input based on question type */}
@@ -253,9 +294,18 @@ export default function QuizTakingPage() {
                     }}
                     className="w-4 h-4"
                   />
-                  <span className="flex-1 text-text-primary">
-                    {option.optionText}
-                  </span>
+                  <div className="flex-1">
+                    <span className="text-text-primary block">
+                      {option.optionText}
+                    </span>
+                    {optionImageUrls.get(option.id) && (
+                      <img
+                        src={optionImageUrls.get(option.id)}
+                        alt="Option"
+                        className="max-w-full max-h-32 rounded mt-2"
+                      />
+                    )}
+                  </div>
                 </label>
               );
             })}
@@ -264,31 +314,61 @@ export default function QuizTakingPage() {
 
         {currentQuestion.questionType === 'FILL_BLANK' && (
           <div className="space-y-4">
-            {currentQuestion.blanks.map((blank, index) => (
-              <div key={blank.id}>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Blank {index + 1}
-                  {blank.unit && ` (${blank.unit})`}
-                </label>
-                <input
-                  type={blank.isNumeric ? 'number' : 'text'}
-                  step={blank.isNumeric ? 'any' : undefined}
-                  value={
-                    Array.isArray(currentAnswer?.answer)
-                      ? currentAnswer.answer[index] || ''
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const current = (currentAnswer?.answer as string[]) || [];
-                    const updated = [...current];
-                    updated[index] = e.target.value;
-                    handleAnswer(currentQuestion.id, updated);
-                  }}
-                  className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
-                  placeholder="Enter your answer"
-                />
-              </div>
-            ))}
+            {currentQuestion.blanks.map((blank, index) => {
+              const dropdownOptions = blank.dropdownOptions
+                ? blank.dropdownOptions.split(',').map(opt => opt.trim())
+                : [];
+
+              return (
+                <div key={blank.id}>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Blank {index + 1}
+                    {blank.unit && ` (${blank.unit})`}
+                  </label>
+                  {blank.inputType === 'DROPDOWN' ? (
+                    <select
+                      value={
+                        Array.isArray(currentAnswer?.answer)
+                          ? currentAnswer.answer[index] || ''
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const current = (currentAnswer?.answer as string[]) || [];
+                        const updated = [...current];
+                        updated[index] = e.target.value;
+                        handleAnswer(currentQuestion.id, updated);
+                      }}
+                      className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                    >
+                      <option value="">-- Select an option --</option>
+                      {dropdownOptions.map((option, optIndex) => (
+                        <option key={optIndex} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={blank.isNumeric ? 'number' : 'text'}
+                      step={blank.isNumeric ? 'any' : undefined}
+                      value={
+                        Array.isArray(currentAnswer?.answer)
+                          ? currentAnswer.answer[index] || ''
+                          : ''
+                      }
+                      onChange={(e) => {
+                        const current = (currentAnswer?.answer as string[]) || [];
+                        const updated = [...current];
+                        updated[index] = e.target.value;
+                        handleAnswer(currentQuestion.id, updated);
+                      }}
+                      className="w-full px-4 py-2 bg-bg-tertiary border border-border rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                      placeholder="Enter your answer"
+                    />
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 

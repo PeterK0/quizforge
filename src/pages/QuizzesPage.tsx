@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlayCircle, Grid, List } from 'lucide-react';
+import { PlayCircle, Grid, List, Plus, Edit2 } from 'lucide-react';
 import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
+import { QuizModal } from '../components/quizzes/QuizModal';
 import { invoke } from '@tauri-apps/api/core';
+import { UpdateQuizData } from '../hooks/useQuizzes';
+import { getQuizDefaults } from '../pages/SettingsPage';
 
 interface Quiz {
   id: number;
@@ -48,6 +51,11 @@ export default function QuizzesPage() {
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingQuiz, setEditingQuiz] = useState<QuizWithDetails | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [questionCount, setQuestionCount] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     loadAllQuizzes();
@@ -125,6 +133,107 @@ export default function QuizzesPage() {
 
   const handleManageQuiz = (quiz: QuizWithDetails) => {
     navigate(`/subjects/${quiz.subjectId}/topics/${quiz.topicId}`);
+  };
+
+  const handleCreateQuiz = async (subjectId: number, topicId: number) => {
+    try {
+      // Get default settings
+      const defaults = getQuizDefaults();
+
+      // Get available question count for this topic
+      const questions = await invoke<any[]>('get_questions', { topicId });
+      const availableCount = questions.length;
+
+      if (availableCount === 0) {
+        alert('This topic has no questions. Please add questions first.');
+        setShowCreateModal(false);
+        return;
+      }
+
+      // Create quiz with defaults
+      const quizData = {
+        topicId,
+        name: 'New Quiz',
+        description: '',
+        questionCount: Math.min(defaults.questionCount, availableCount),
+        timeLimitMinutes: defaults.timeLimitMinutes,
+        shuffleQuestions: defaults.shuffleQuestions,
+        shuffleOptions: defaults.shuffleOptions,
+        showAnswersAfter: defaults.showAnswersAfter,
+        passingScorePercent: defaults.passingScorePercent,
+      };
+
+      const newQuiz = await invoke<any>('create_quiz', { data: quizData });
+      setShowCreateModal(false);
+
+      // Navigate to quiz management page to edit
+      navigate(`/subjects/${subjectId}/topics/${topicId}/quizzes`);
+    } catch (err) {
+      console.error('Failed to create quiz:', err);
+      alert('Failed to create quiz');
+    }
+  };
+
+  const handleEditQuiz = async (quiz: QuizWithDetails, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingQuiz(quiz);
+    // Load question count for this topic
+    try {
+      const questions = await invoke<any[]>('get_questions', { topicId: quiz.topicId });
+      setQuestionCount(questions.length);
+    } catch (err) {
+      console.error('Failed to load questions:', err);
+      setQuestionCount(0);
+    }
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateQuiz = async (data: any) => {
+    if (!editingQuiz) return;
+
+    try {
+      const updateData: UpdateQuizData = {
+        name: data.name,
+        description: data.description,
+        questionCount: data.questionCount,
+        timeLimitMinutes: data.timeLimitMinutes,
+        shuffleQuestions: data.shuffleQuestions,
+        shuffleOptions: data.shuffleOptions,
+        showAnswersAfter: data.showAnswersAfter,
+        passingScorePercent: data.passingScorePercent,
+      };
+
+      await invoke('update_quiz', {
+        id: editingQuiz.id,
+        data: updateData,
+      });
+
+      setEditModalOpen(false);
+      setEditingQuiz(null);
+      loadAllQuizzes();
+    } catch (err) {
+      console.error('Failed to update quiz:', err);
+      alert('Failed to update quiz');
+    }
+  };
+
+  const handleDeleteQuizClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteQuiz = async () => {
+    if (!editingQuiz) return;
+
+    try {
+      await invoke('delete_quiz', { id: editingQuiz.id });
+      setShowDeleteConfirm(false);
+      setEditModalOpen(false);
+      setEditingQuiz(null);
+      loadAllQuizzes();
+    } catch (err) {
+      console.error('Failed to delete quiz:', err);
+      alert('Failed to delete quiz');
+    }
   };
 
   const renderGroupedQuizzes = () => {
@@ -256,39 +365,62 @@ export default function QuizzesPage() {
     return (
       <div
         key={quiz.id}
-        className="p-6 rounded-lg border-2 transition-all hover:scale-105 hover:shadow-lg cursor-pointer"
+        className="p-6 rounded-lg border-2 transition-all flex gap-4"
         style={{
           backgroundColor: 'var(--color-bg-secondary)',
           borderColor: quiz.subjectColor,
         }}
-        onClick={() => handleStartQuiz(quiz)}
       >
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className="p-2 rounded-lg"
-            style={{ backgroundColor: quiz.subjectColor, color: 'white' }}
-          >
-            <PlayCircle size={20} />
+        {/* Main Content */}
+        <div className="flex-1">
+          <div className="flex items-start gap-3 mb-3">
+            <div
+              className="p-2 rounded-lg"
+              style={{ backgroundColor: quiz.subjectColor, color: 'white' }}
+            >
+              <PlayCircle size={20} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                {quiz.name}
+              </h3>
+            </div>
+          </div>
+          <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
+            {quiz.description || 'No description'}
+          </p>
+          <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+            <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
+              {quiz.topicName}
+            </span>
+            <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
+              {quiz.questionCount} questions
+            </span>
+            {quiz.timeLimitMinutes && (
+              <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
+                {quiz.timeLimitMinutes} min
+              </span>
+            )}
           </div>
         </div>
-        <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-text-primary)' }}>
-          {quiz.name}
-        </h3>
-        <p className="text-sm mb-3 line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>
-          {quiz.description || 'No description'}
-        </p>
-        <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-          <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
-            {quiz.topicName}
-          </span>
-          <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
-            {quiz.questionCount} questions
-          </span>
-          {quiz.timeLimitMinutes && (
-            <span className="px-2 py-1 rounded" style={{ backgroundColor: 'var(--color-bg-tertiary)' }}>
-              {quiz.timeLimitMinutes} min
-            </span>
-          )}
+
+        {/* Action Buttons - Vertical Stack */}
+        <div className="flex flex-col gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={(e) => handleEditQuiz(quiz, e)}
+            className="w-10 h-10 p-0 flex items-center justify-center"
+          >
+            <Edit2 size={18} />
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleStartQuiz(quiz)}
+            className="w-10 h-10 p-0 flex items-center justify-center"
+          >
+            <PlayCircle size={18} />
+          </Button>
         </div>
       </div>
     );
@@ -306,6 +438,12 @@ export default function QuizzesPage() {
     <MainLayout
       title="All Quizzes"
       breadcrumbs={[{ label: 'Home' }, { label: 'Quizzes' }]}
+      action={
+        <Button onClick={() => setShowCreateModal(true)}>
+          <Plus size={20} className="inline mr-2" />
+          Create Quiz
+        </Button>
+      }
     >
       {/* Filters and Controls */}
       <div className="mb-6 space-y-4">
@@ -403,6 +541,192 @@ export default function QuizzesPage() {
       ) : (
         renderGroupedQuizzes()
       )}
+
+      {/* Create Quiz Modal */}
+      {showCreateModal && (
+        <QuickCreateModal
+          subjects={subjects}
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreateQuiz}
+        />
+      )}
+
+      {/* Edit Quiz Modal */}
+      {editingQuiz && (
+        <QuizModal
+          isOpen={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingQuiz(null);
+            setShowDeleteConfirm(false);
+          }}
+          onSubmit={handleUpdateQuiz}
+          quiz={editingQuiz}
+          topicId={editingQuiz.topicId}
+          availableQuestionCount={questionCount}
+          onDelete={handleDeleteQuizClick}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && editingQuiz && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="rounded-lg p-6 max-w-md w-full mx-4"
+            style={{ backgroundColor: 'var(--color-bg-primary)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+              Delete Quiz
+            </h2>
+            <p className="mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+              Are you sure you want to delete "{editingQuiz.name}"? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteQuiz}
+                style={{ backgroundColor: 'var(--color-accent-red)', color: 'white' }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
+  );
+}
+
+interface QuickCreateModalProps {
+  subjects: Subject[];
+  onClose: () => void;
+  onCreate: (subjectId: number, topicId: number) => void;
+}
+
+function QuickCreateModal({ subjects, onClose, onCreate }: QuickCreateModalProps) {
+  const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
+  const [selectedTopic, setSelectedTopic] = useState<number | null>(null);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedSubject) {
+      loadTopics(selectedSubject);
+    } else {
+      setTopics([]);
+      setSelectedTopic(null);
+    }
+  }, [selectedSubject]);
+
+  const loadTopics = async (subjectId: number) => {
+    try {
+      setLoading(true);
+      const topicsData = await invoke<Topic[]>('get_topics', { subjectId });
+      setTopics(topicsData);
+    } catch (err) {
+      console.error('Failed to load topics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = () => {
+    if (selectedSubject && selectedTopic) {
+      onCreate(selectedSubject, selectedTopic);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="rounded-lg p-6 max-w-md w-full mx-4"
+        style={{ backgroundColor: 'var(--color-bg-primary)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text-primary)' }}>
+          Create New Quiz
+        </h2>
+
+        <div className="space-y-4">
+          {/* Subject Selection */}
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+              Subject
+            </label>
+            <select
+              value={selectedSubject || ''}
+              onChange={(e) => setSelectedSubject(e.target.value ? Number(e.target.value) : null)}
+              className="w-full px-4 py-2 rounded-lg border"
+              style={{
+                backgroundColor: 'var(--color-bg-secondary)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+              }}
+            >
+              <option value="">Select a subject</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>
+                  {subject.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Topic Selection */}
+          {selectedSubject && (
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                Topic
+              </label>
+              {loading ? (
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Loading topics...</p>
+              ) : topics.length === 0 ? (
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>No topics available</p>
+              ) : (
+                <select
+                  value={selectedTopic || ''}
+                  onChange={(e) => setSelectedTopic(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-4 py-2 rounded-lg border"
+                  style={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-primary)',
+                  }}
+                >
+                  <option value="">Select a topic</option>
+                  {topics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleCreate}
+            disabled={!selectedSubject || !selectedTopic}
+          >
+            Continue
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

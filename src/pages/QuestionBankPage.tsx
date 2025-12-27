@@ -5,6 +5,7 @@ import { MainLayout } from '../components/layout/MainLayout';
 import { Button } from '../components/ui/Button';
 import { QuestionCard } from '../components/questions/QuestionCard';
 import { QuestionModal } from '../components/questions/QuestionModal';
+import { QuestionTestModal } from '../components/questions/QuestionTestModal';
 import {
   useQuestions,
   QuestionWithDetails,
@@ -31,11 +32,17 @@ export default function QuestionBankPage() {
   const [topic, setTopic] = useState<Topic | null>(null);
   const [subject, setSubject] = useState<Subject | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<QuestionWithDetails | null>(
+    null
+  );
+  const [testingQuestion, setTestingQuestion] = useState<QuestionWithDetails | null>(
     null
   );
   const [filterType, setFilterType] = useState<string>('ALL');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('ALL');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<QuestionWithDetails | null>(null);
 
   const topicIdNum = topicId ? parseInt(topicId) : null;
   const subjectIdNum = subjectId ? parseInt(subjectId) : 0;
@@ -92,6 +99,9 @@ export default function QuestionBankPage() {
       source: data.source,
       options: data.options,
       blanks: data.blanks,
+      numericData: data.numericData,
+      orderItems: data.orderItems,
+      matchPairs: data.matchPairs,
     };
 
     const result = await updateQuestion(editingQuestion.id, updateData);
@@ -106,13 +116,35 @@ export default function QuestionBankPage() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteQuestion = async (id: number) => {
-    await deleteQuestion(id);
+  const handleTestClick = (question: QuestionWithDetails) => {
+    setTestingQuestion(question);
+    setIsTestModalOpen(true);
+  };
+
+  const handleDeleteQuestionClick = (id: number) => {
+    const question = questions.find(q => q.id === id);
+    if (!question) return;
+
+    setQuestionToDelete(question);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteQuestion = async () => {
+    if (!questionToDelete) return;
+
+    await deleteQuestion(questionToDelete.id);
+    setShowDeleteConfirm(false);
+    setQuestionToDelete(null);
   };
 
   const handleModalClose = () => {
     setIsModalOpen(false);
     setEditingQuestion(null);
+  };
+
+  const handleTestModalClose = () => {
+    setIsTestModalOpen(false);
+    setTestingQuestion(null);
   };
 
   // Filter questions
@@ -152,9 +184,9 @@ export default function QuestionBankPage() {
         breadcrumbs={breadcrumbs}
         showBack={true}
         action={
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus size={20} />
-            Add Question
+          <Button onClick={() => setIsModalOpen(true)} className="min-w-[170px] h-[40px] flex items-center justify-center">
+            <Plus size={20} className="mr-2" />
+            New Question
           </Button>
         }
       >
@@ -207,8 +239,8 @@ export default function QuestionBankPage() {
                 : 'No questions match the current filters.'}
             </p>
             {questions.length === 0 && (
-              <Button onClick={() => setIsModalOpen(true)}>
-                <Plus size={20} />
+              <Button onClick={() => setIsModalOpen(true)} className="min-w-[200px] h-[40px] flex items-center justify-center">
+                <Plus size={20} className="mr-2" />
                 Create First Question
               </Button>
             )}
@@ -220,7 +252,8 @@ export default function QuestionBankPage() {
                 key={question.id}
                 question={question}
                 onEdit={handleEditClick}
-                onDelete={handleDeleteQuestion}
+                onDelete={handleDeleteQuestionClick}
+                onTest={handleTestClick}
               />
             ))}
           </div>
@@ -237,6 +270,47 @@ export default function QuestionBankPage() {
           subjectId={subjectIdNum}
           topicId={topicIdNum}
         />
+      )}
+
+      {/* Question Test Modal */}
+      {isTestModalOpen && testingQuestion && (
+        <QuestionTestModal
+          isOpen={isTestModalOpen}
+          onClose={handleTestModalClose}
+          question={testingQuestion}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && questionToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+          <div className="bg-bg-primary rounded-lg p-6 max-w-md w-full mx-4 border border-border">
+            <h2 className="text-xl font-bold mb-4 text-text-primary">Delete Question</h2>
+            <p className="text-text-secondary mb-6">
+              Are you sure you want to delete this question? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setQuestionToDelete(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={confirmDeleteQuestion}
+                style={{
+                  backgroundColor: 'var(--color-accent-red)',
+                  borderColor: 'var(--color-accent-red)',
+                }}
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
